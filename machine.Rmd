@@ -1,0 +1,97 @@
+Balish Practical Machine Learning
+========================================================
+Background per assignment:
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively.  One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+Goal:
+------------------------------------------------------------------
+The goal of the project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did.
+
+Data provided per web link includes a training and a test set. I will read in the data (training) and the needed caret library and explore some features:
+
+```{r}
+library(caret)
+pmltrain<-read.csv("pml-training.csv")
+summary(pmltrain)
+
+```
+
+Data Cleaning
+-------------------------------------------------------------------
+There are many variables with mainly NA and for simplicity will eliminate them.
+Will check for variables with near zero variance and elimiate them as well.
+
+```{r}
+# There are many variables with mainly NA and use the following code to eliminate
+
+pmltrainok<-pmltrain[,!apply(is.na(pmltrain), 2, any)]
+
+#There remain variables with near zero variance and some of which have undefined
+#values. Will find these and then also remove them leaving the pmltrainred dataset
+
+nsv <- nearZeroVar(pmltrainok,saveMetrics=TRUE)
+good<-rownames(nsv)[nsv$nzv==FALSE]
+pmltrainred<-pmltrainok[,names(pmltrainok)%in%good]
+
+```
+The first 6 variables are time and subject names and numbers and will also eliminate those with the following:
+
+```{r}
+pmltrainokk<-pmltrainred[,-c(1:6)]
+```
+
+Create a training and validation (testing) set from the original training set
+-----------------------------------------------------------
+Will set seed and then create a training and testing set from the original training set to allow some validation.
+
+```{r}
+set.seed(3455)
+inTrain <- createDataPartition(y=pmltrainokk$classe,
+                                 p=0.4, list=FALSE)
+training <- pmltrainokk[inTrain,]
+testing <- pmltrainokk[-inTrain,]
+```
+
+
+The classe variable is now the 53rd column and will look at the degree of correlations among other variables to get further insight into models to choose:
+
+
+```{r}
+M <- abs(cor(training[,-53]))
+diag(M) <- 0
+which(M > 0.8,arr.ind=T)
+
+```
+Rationale for approach
+-----------------------
+There remain as seen above many correlated variables interestingly many correlated with the row number. One approach would be to use a simple model and use PCA to limit variables. Since random forests are good for nonlinear and complex problems I chose to use this without further preprocessing since random forrests are robust. I use cross validation in the call to rf  - cv method and allowParallel to be true. I chose these parameters since the boot strap method took too long on my lowly PC.
+
+```{r}
+modFit <- train(classe~.,data=training,method="rf",
+                trControl=trainControl(method="cv",number=5),
+                prox=TRUE,allowParallel=TRUE)
+#we now look at the fit
+modFit
+
+```
+Cross validation
+---------------------------------------------------
+The fit looks excellent and we further cross validate with the testing subset of the original training set. We generate the confusion matrix and this suggests an excellent ability to extrapolate beyond our original training data an accuracy close to 90%.
+
+```{r}
+confusionMatrix(testing$classe,predict(modFit,testing))
+
+```
+Application to real test data
+-------------------------------------------------
+Finally we read in the actual testing data and use our model to predict the classe of each of the 20.
+
+```{r}
+pmltest<-read.csv("pml-testing.csv")
+pred <- predict(modFit,pmltest)
+pred
+
+```
+I would love to have tried other models but the computation time on my lowly windows PC has limited me greatly.
+

@@ -1,0 +1,16 @@
+{
+    "contents" : "library(caret)\npmltrain<-read.csv(\"pml-training.csv\")\nstr(pmltrain)\nnames(pmltrain)\npmltrainok<-pmltrain[,!apply(is.na(pmltrain), 2, any)]\nstr(pmltrainok)\nnsv <- nearZeroVar(pmltrainok,saveMetrics=TRUE)\ngood<-rownames(nsv)[nsv$nzv==FALSE]\npmltrainred<-pmltrainok[,names(pmltrainok)%in%good]\n\npmltrainokk<-pmltrainred[,-c(1:6)]\n str(pmltrainokk)\n\nset.seed(3455)\ninTrain <- createDataPartition(y=pmltrainokk$classe,\n                               p=0.4, list=FALSE)\ntraining <- pmltrainokk[inTrain,]\ntesting <- pmltrainokk[-inTrain,]\n\n#nsv <- nearZeroVar(training,saveMetrics=TRUE)\n#M <- abs(cor(training[,-53]))\n#diag(M) <- 0\n#which(M > 0.8,arr.ind=T)\n\n#modelFit <- train(training$classe ~ .,method=\"glm\",preProcess=\"pca\",data=training)\n#confusionMatrix(testing$classe,predict(modelFit,testing))\n#modelFit <- train(training$classe ~ .,method=\"rpart\",data=training)\n\nmodFit <- train(classe~.,data=training,method=\"rf\",\n                trControl=trainControl(method=\"cv\",number=5),\n                prox=TRUE,allowParallel=TRUE)\nmodFit\n#pred <- predict(modFit,testing); testing$predRight <- pred==testing$classe\nconfusionMatrix(testing$classe,predict(modFit,testing))\n\npmltest<-read.csv(\"pml-testing.csv\")\npred <- predict(modFit,pmltest)",
+    "created" : 1422159841027.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "849531733",
+    "id" : "CB354FBD",
+    "lastKnownWriteTime" : 1422161801,
+    "path" : "C:/Users/Jackie/Desktop/marsh/machine/machine.R",
+    "project_path" : "machine.R",
+    "properties" : {
+    },
+    "source_on_save" : false,
+    "type" : "r_source"
+}
